@@ -45,7 +45,7 @@ Embedded directly in the HTML as the `CURATED` JavaScript object. Contains field
 | `keepSell` | `"keep"` / `"sell"` / `"situational"` |
 | `tierNote` | Short community verdict |
 | `questReward` | Quest name if applicable |
-| `reviewed` | `true` = human-verified, `false` = auto-stub |
+| `reviewed` | `true` = human-verified, `false` = auto-stub | 
 
 Weapons **not** in the curated object get auto-estimated values derived from their API data (drop location text, tradability, name patterns). These are marked with an **⚠ Unreviewed** badge and should be treated as rough guidance only.
 
