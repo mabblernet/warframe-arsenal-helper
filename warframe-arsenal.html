@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Warframe Arsenal Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ── VARIABLES ─────────────────────────────────────────── */
+:root{
+  --bg:#0a0c0e;--surface:#111418;--card:#151a1f;--elevated:#1e252f;
+  --border:#1f2a35;--border-b:#2a3a4a;
+  --gold:#c8a84b;--gold-dim:#7a6330;--gold-glow:rgba(200,168,75,.18);
+  --red:#e05a2b;--blue:#4a9eca;--grey:#4a5560;--purple:#9b6ef3;
+  --warn:#d4860a;--warn-bg:rgba(212,134,10,.12);--warn-border:rgba(212,134,10,.3);
+  --t1:#d8dde3;--t2:#7a8898;--t3:#4a5560;
+  --r:6px;--cr:8px;--tr:.18s ease;
+  --fd:'Rajdhani',sans-serif;--fb:'Inter',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:15px}
+body{font-family:var(--fb);background:var(--bg);color:var(--t1);min-height:100vh;line-height:1.5;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 80% 50% at 50% -10%,rgba(200,168,75,.06) 0%,transparent 70%),
+  repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,.015) 40px),
+  repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,.015) 40px);
+  pointer-events:none;z-index:0}
+
+/* ── LAYOUT ────────────────────────────────────────────── */
+.wrap{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 16px}
+
+/* ── UPDATE BANNER ─────────────────────────────────────── */
+#update-banner{
+  display:none;background:var(--warn-bg);border:1px solid var(--warn-border);
+  border-radius:var(--r);padding:10px 14px;margin:12px 0 0;
+  display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;
+}
+#update-banner.hidden{display:none}
+.banner-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+.banner-text{flex:1;min-width:200px}
+.banner-text strong{font-family:var(--fd);letter-spacing:.04em;color:var(--warn);font-size:.9rem}
+.banner-text p{font-size:.78rem;color:var(--t2);margin-top:2px;line-height:1.5}
+.banner-close{background:none;border:none;color:var(--t3);cursor:pointer;font-size:1rem;padding:0 4px;align-self:flex-start;flex-shrink:0}
+.banner-close:hover{color:var(--t1)}
+
+/* ── HEADER ────────────────────────────────────────────── */
+.hdr{padding:18px 0 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hdr-l{display:flex;align-items:center;gap:12px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-ico{width:34px;height:34px;background:var(--gold);clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.logo h1{font-family:var(--fd);font-size:1.4rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.logo h1 span{color:var(--gold)}
+.hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.user-pill{display:flex;align-items:center;gap:7px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 12px 4px 8px;font-size:.78rem}
+.user-pill .ui{color:var(--gold)}
+#uname{color:var(--t2);font-size:.78rem}
+
+/* ── FILTER SECTIONS ───────────────────────────────────── */
+.fs{padding:10px 0 0}
+.fs-lbl{font-family:var(--fd);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin-bottom:5px}
+.fg{display:flex;flex-wrap:wrap;gap:5px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.fb{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 11px;color:var(--t2);font-size:.76rem;font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all var(--tr);white-space:nowrap}
+.fb:hover{border-color:var(--gold-dim);color:var(--t1)}
+.fb.on{background:var(--elevated);border-color:var(--gold);color:var(--gold)}
+.tb.te.on{border-color:var(--red);color:var(--red);background:rgba(224,90,43,.1)}
+.tb.tg.on{border-color:var(--blue);color:var(--blue);background:rgba(74,158,202,.1)}
+.tb.tf.on{border-color:var(--grey);color:var(--t2);background:rgba(74,85,96,.15)}
+
+/* ── CONTROLS ──────────────────────────────────────────── */
+.ctrl{padding:12px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
+.sw{position:relative;flex:1;min-width:180px;max-width:280px}
+.si{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--t3);font-size:.85rem;pointer-events:none}
+#srch{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:7px 9px 7px 30px;color:var(--t1);font-size:.83rem;font-family:var(--fb);transition:border-color var(--tr)}
+#srch:focus{outline:none;border-color:var(--gold-dim)}
+#srch::placeholder{color:var(--t3)}
+.qb{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:5px 13px;color:var(--t2);font-size:.78rem;font-family:var(--fb);cursor:pointer;transition:all var(--tr);white-space:nowrap}
+.qb:hover{border-color:var(--gold-dim);color:var(--t1)}
+.qb.on{background:var(--gold-glow);border-color:var(--gold);color:var(--gold)}
+#rcount{margin-left:auto;font-size:.78rem;color:var(--t3);font-family:var(--fd);letter-spacing:.04em}
+
+/* ── GRID ───────────────────────────────────────────────── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:13px;padding:14px 0 40px}
+
+/* ── CARD ───────────────────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--cr);overflow:hidden;display:flex;flex-direction:column;transition:border-color var(--tr),box-shadow var(--tr),transform var(--tr)}
+.card:hover{border-color:var(--border-b);box-shadow:0 4px 20px rgba(0,0,0,.4);transform:translateY(-1px)}
+.card.mastered{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold),0 2px 10px rgba(200,168,75,.15)}
+.card.owned:not(.mastered){border-color:var(--blue)}
+.stripe{height:3px;flex-shrink:0}
+.stripe.te{background:linear-gradient(90deg,var(--red),rgba(224,90,43,.3))}
+.stripe.tg{background:linear-gradient(90deg,var(--blue),rgba(74,158,202,.3))}
+.stripe.tf{background:var(--grey)}
+.stripe.tu{background:linear-gradient(90deg,var(--t3),transparent)}
+
+.ch{display:flex;align-items:flex-start;gap:11px;padding:11px 13px 9px}
+.img-w{width:68px;height:68px;flex-shrink:0;background:var(--surface);border-radius:5px;border:1px solid var(--border);overflow:hidden;display:flex;align-items:center;justify-content:center}
+.wimg{width:100%;height:100%;object-fit:contain;padding:4px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.6))}
+.ctb{flex:1;min-width:0}
+.wname{font-family:var(--fd);font-size:1.05rem;font-weight:600;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+.wmeta{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.tt,.st,.mr{font-size:.66rem;font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;border-radius:3px;padding:1px 5px}
+.tt{background:var(--elevated);color:var(--t2);border:1px solid var(--border)}
+.st{background:rgba(74,158,202,.1);color:var(--blue);border:1px solid rgba(74,158,202,.2)}
+.mr{background:rgba(200,168,75,.1);color:var(--gold);border:1px solid rgba(200,168,75,.2)}
+.tlbl{font-family:var(--fd);font-size:.7rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-top:5px}
+.tlbl.te{color:var(--red)}.tlbl.tg{color:var(--blue)}.tlbl.tf{color:var(--grey)}.tlbl.tu{color:var(--t3)}
+
+.cb{padding:0 13px 9px;flex:1;display:flex;flex-direction:column;gap:7px}
+
+/* Unreviewed badge */
+.badge-unreviewed{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:.68rem;font-family:var(--fd);letter-spacing:.05em;text-transform:uppercase;
+  border-radius:4px;padding:2px 7px;width:fit-content;
+  background:rgba(155,110,243,.1);color:var(--purple);border:1px solid rgba(155,110,243,.25);
+  cursor:help;
+}
+
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;border-radius:4px;padding:2px 7px;width:fit-content}
+.bq{background:rgba(180,100,255,.1);color:#b464ff;border:1px solid rgba(180,100,255,.22)}
+.ba{background:var(--elevated);color:var(--t2);border:1px solid var(--border)}
+
+.dr{display:flex;align-items:center;gap:7px;margin-top:1px}
+.dl{font-size:.7rem;color:var(--t3);font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;min-width:38px}
+.dots{display:flex;gap:3px}
+.dot{width:9px;height:9px;border-radius:2px;background:var(--elevated);border:1px solid var(--border-b)}
+.dot.f{background:var(--gold);border-color:var(--gold)}
+.ad{font-size:.76rem;color:var(--t2);line-height:1.5}
+.tn{font-size:.76rem;color:var(--t2);border-left:2px solid var(--border-b);padding-left:7px;line-height:1.5;font-style:italic}
+.tn.unreviewed-note{color:var(--t3);font-style:italic}
+.mastered .tn{border-color:var(--gold)}
+
+.cs{margin-top:3px}
+.ct{font-size:.71rem;font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);cursor:pointer;user-select:none;transition:color var(--tr)}
+.ct:hover{color:var(--t2)}
+.cl{margin-top:5px;display:flex;flex-direction:column;gap:4px}
+.cr2{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px;font-size:.72rem;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 7px}
+.cn{color:var(--t1);font-weight:500}.cq{color:var(--gold);font-family:var(--fd);font-size:.78rem}
+.csrc{color:var(--t3);font-size:.68rem;width:100%;margin-top:1px}
+
+.cf{padding:7px 13px 11px;border-top:1px solid var(--border);display:flex;align-items:center;gap:7px;justify-content:space-between}
+.tr-row{display:flex;gap:5px}
+.tbtn{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:4px 9px;color:var(--t3);font-size:.73rem;font-family:var(--fb);cursor:pointer;transition:all var(--tr)}
+.tbtn:hover{border-color:var(--border-b);color:var(--t2)}
+.tbtn.on{background:rgba(74,158,202,.12);border-color:var(--blue);color:var(--blue)}
+.tbtn.mb.on{background:var(--gold-glow);border-color:var(--gold);color:var(--gold)}
+.wl{font-size:.71rem;color:var(--t3);text-decoration:none;font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;transition:color var(--tr)}
+.wl:hover{color:var(--gold)}
+
+/* ── LOADER ─────────────────────────────────────────────── */
+#ldr{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
+.linner{display:flex;flex-direction:column;align-items:center;gap:14px}
+.llogo{width:44px;height:44px;background:var(--gold);clip-path:polygon(50% 0%,100% 38%,82% 100%,18% 100%,0% 38%);animation:pulse 1.2s ease-in-out infinite alternate}
+@keyframes pulse{from{opacity:.4;transform:scale(.9)}to{opacity:1;transform:scale(1.05)}}
+.ltxt{font-family:var(--fd);font-size:.8rem;letter-spacing:.2em;text-transform:uppercase;color:var(--t3)}
+.lsub{font-size:.72rem;color:var(--t3);margin-top:-6px}
+
+/* ── ERROR STATE ─────────────────────────────────────────── */
+#api-error{display:none;margin:20px 0;background:rgba(224,90,43,.1);border:1px solid rgba(224,90,43,.3);border-radius:var(--r);padding:16px 20px}
+#api-error h3{font-family:var(--fd);color:var(--red);margin-bottom:6px;letter-spacing:.06em}
+#api-error p{font-size:.82rem;color:var(--t2);line-height:1.6}
+#api-error code{background:var(--elevated);padding:1px 5px;border-radius:3px;font-size:.78rem;color:var(--t1)}
+
+/* ── EMPTY ──────────────────────────────────────────────── */
+.empty{grid-column:1/-1;display:flex;flex-direction:column;align-items:center;gap:14px;padding:70px 20px;color:var(--t3)}
+.empty-ico{font-size:2.5rem;opacity:.25}
+.empty p{font-size:.88rem}
+.empty button{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:7px 18px;color:var(--t2);cursor:pointer;font-family:var(--fb);transition:all var(--tr)}
+.empty button:hover{border-color:var(--gold-dim);color:var(--t1)}
+
+/* ── MODAL ──────────────────────────────────────────────── */
+.mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px}
+.md{background:var(--card);border:1px solid var(--border-b);border-radius:10px;padding:26px 22px;width:100%;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.md h2{font-family:var(--fd);font-size:1.15rem;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+.md p{font-size:.8rem;color:var(--t2);margin-bottom:14px;line-height:1.5}
+.md input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:8px 11px;color:var(--t1);font-size:.88rem;font-family:var(--fb);margin-bottom:13px;transition:border-color var(--tr)}
+.md input:focus{outline:none;border-color:var(--gold-dim)}
+.mbtns{display:flex;gap:7px;justify-content:flex-end}
+.bp,.bs{padding:6px 16px;border-radius:var(--r);font-size:.8rem;font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;border:1px solid;transition:all var(--tr)}
+.bp{background:var(--gold);border-color:var(--gold);color:#0a0c0e;font-weight:700}
+.bp:hover{background:#dbb855}
+.bs{background:transparent;border-color:var(--border);color:var(--t2)}
+.bs:hover{border-color:var(--border-b);color:var(--t1)}
+
+/* ── TOAST ──────────────────────────────────────────────── */
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--elevated);border:1px solid var(--border-b);border-radius:18px;padding:7px 18px;font-size:.8rem;color:var(--t1);z-index:999;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:6px 13px;color:var(--t2);font-size:.78rem;font-family:var(--fd);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:none;transition:all var(--tr);white-space:nowrap}
+.btn:hover{border-color:var(--gold-dim);color:var(--t1)}
+.btn-g{border-color:var(--gold);color:var(--gold)}
+.btn-g:hover{background:var(--gold-glow)}
+
+/* ── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border-b);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--gold-dim)}
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+@media(max-width:640px){
+  .grid{grid-template-columns:1fr}
+  .hdr{flex-direction:column;align-items:flex-start}
+  .hdr-r{width:100%;justify-content:flex-start}
+  .sw{max-width:100%}
+  #rcount{margin-left:0}
+  .logo h1{font-size:1.15rem}
+  #update-banner{margin-top:8px}
+}
+@media(min-width:641px) and (max-width:900px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="ldr">
+  <div class="linner">
+    <div class="llogo"></div>
+    <div class="ltxt">Loading Arsenal…</div>
+    <div class="lsub" id="lsub">Connecting to Warframe API</div>
+  </div>
+</div>
+
+<!-- Username Modal -->
+<div id="umodal" class="mo">
+  <div class="md">
+    <h2>Set Your Profile</h2>
+    <p>Choose a name to save your mastery and ownership data locally on this device and browser.</p>
+    <input type="text" id="uinput" placeholder="e.g. Tenno_Prime" maxlength="40" autocomplete="off"/>
+    <div class="mbtns">
+      <button id="ucancl" class="bs">Cancel</button>
+      <button id="usave" class="bp">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="wrap">
+
+  <!-- Update Banner -->
+  <div id="update-banner" class="hidden">
+    <span class="banner-icon">⚠</span>
+    <div class="banner-text">
+      <strong>Curated data update recommended</strong>
+      <p id="banner-msg">Many weapons are missing power-level evaluations. Tier ratings, difficulty scores and keep/sell recommendations require human judgement from experienced players — they cannot be derived from stats alone. To update: open Claude Code, point it at this repo, and follow the instructions in <code>README.md → Updating Curated Data</code>.</p>
+    </div>
+    <button class="banner-close" onclick="document.getElementById('update-banner').classList.add('hidden')" title="Dismiss">✕</button>
+  </div>
+
+  <!-- API Error -->
+  <div id="api-error">
+    <h3>⚠ Could not load weapon data</h3>
+    <p>The app failed to reach the Warframe community API (<code>api.warframestat.us</code>). Make sure you have an internet connection. The API is free and community-maintained — if it's down, try again in a few minutes.<br><br>
+    Error: <span id="api-error-msg"></span></p>
+  </div>
+
+  <header class="hdr">
+    <div class="hdr-l">
+      <div class="logo">
+        <div class="logo-ico">⚔</div>
+        <h1>Arsenal <span>Tracker</span></h1>
+      </div>
+    </div>
+    <div class="hdr-r">
+      <div class="user-pill"><span class="ui">◈</span><span id="uname">Guest</span></div>
+      <button id="setuser" class="btn btn-g">Set Profile</button>
+      <a href="https://wiki.warframe.com/w/Weapons" target="_blank" rel="noopener" class="btn">Wiki ↗</a>
+    </div>
+  </header>
+
+  <div class="fs"><div class="fs-lbl">Weapon Type</div><div id="ftype" class="fg"></div></div>
+  <div class="fs"><div class="fs-lbl">Subtype</div><div id="fsub" class="fg"></div></div>
+  <div class="fs"><div class="fs-lbl">Community Tier</div><div id="ftier" class="fg"></div></div>
+
+  <div class="ctrl">
+    <div class="sw"><span class="si">⌕</span><input type="text" id="srch" placeholder="Search weapons…" autocomplete="off"/></div>
+    <button id="qowned" class="qb">◈ Owned Only</button>
+    <button id="qunmast" class="qb">☆ Hide Mastered</button>
+    <button id="qunreviewed" class="qb">⚠ Unreviewed Only</button>
+    <span id="rcount" class="rcount">Loading…</span>
+  </div>
+
+  <div id="grid" class="grid"></div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// CURATED JUDGEMENT DATA
+// Keys = exact weapon name from the Warframe API.
+// Only fields that CANNOT be derived from the API go here.
+// "reviewed: true" means a human has verified this entry.
+//
+// tier:                "endgame" | "good" | "average" | "fodder"
+// acquisition:         see ACQ_LABELS below
+// acquisitionDifficulty: 1 (trivial) → 5 (extremely hard)
+// keepSell:            "keep" | "sell" | "situational"
+// tierNote:            short community verdict string
+// questReward:         name of quest if weapon is a quest reward
+// reviewed:            true = human-verified, false = AI-stub only
+// ═══════════════════════════════════════════════════════════════
+const CURATED = {
+  // ── PRIMARIES ─────────────────────────────────────────────────
+
+  // Market / blueprint easy
+  "MK1-Braton":         {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder. Replace as soon as possible.", reviewed:true},
+  "MK1-Paris":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
+  "MK1-Strun":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
+  "Braton":             {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Mastery fodder. Braton Prime is the better option.", reviewed:true},
+  "Paris":              {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Excellent with Incarnon Genesis — highest status chance of all bows in Incarnon form.", reviewed:true},
+  "Strun":              {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Mastery fodder. Strun Wraith is strictly better.", reviewed:true},
+  "Boltor":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Strong Incarnon — one of the best primary Incarnons. SS-tier slash damage.", reviewed:true},
+  "Latron":             {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"SS-tier Incarnon — best primary for raw stopping power. Doubles as armor-strip machine.", reviewed:true},
+  "Torid":              {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"SS-tier Incarnon — most popular Incarnon weapon. Excellent AoE Toxin crowd-clearing.", reviewed:true},
+  "Miter":              {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"S-tier Incarnon — competitor to Latron for best primary. Slightly inconsistent homing.", reviewed:true},
+  "Soma":               {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"situational", tierNote:"Classic high-crit rifle. Solid mid-game, Soma Prime is the better investment.", reviewed:true},
+  "Tonkor":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"sell",        tierNote:"Decent grenade launcher but outclassed by Kuva/Tenet launchers.", reviewed:true},
+  "Ignis":              {tier:"average",  acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Good early flamethrower. Ignis Wraith is strictly better in every way.", reviewed:true},
+  "Ignis Wraith":       {tier:"good",     acquisition:"clan",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best flamethrower. Wide AoE cone, strong for dense packs. Still viable in Steel Path.", reviewed:true},
+  "Hek":                {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"sell",        tierNote:"Strong early/mid shotgun. Vaykor Hek (Syndicate) is the better long-term version.", reviewed:true},
+  "Vaykor Hek":         {tier:"good",     acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Strong syndicate shotgun with built-in Health Conversion proc. Solid Steel Path.", reviewed:true},
+  "Kohm":               {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Unique spinup shotgun with insane multishot scaling. Good status applicator.", reviewed:true},
+  "Amprex":             {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Chain lightning that hits multiple enemies. Still fun and effective with good builds.", reviewed:true},
+  "Soma Prime":         {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Reliable high-crit rifle. Solid all-rounder for general content.", reviewed:true},
+  "Braton Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Balanced and reliable prime. Good for new players reaching relics.", reviewed:true},
+  "Boltor Prime":       {tier:"average",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"sell",        tierNote:"Once meta, now power-crept. Build for mastery and sell.", reviewed:true},
+  "Paris Prime":        {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Good prime bow with Incarnon potential.", reviewed:true},
+  "Dread":              {tier:"good",     acquisition:"boss",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Iconic Slash-heavy bow from Stalker. Incarnon available. Rare drop — keep once obtained.", reviewed:true},
+  "Nataruk":            {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:4, keepSell:"keep",        questReward:"The New War", tierNote:"One of the best weapons in the game. Exceptional for Steel Path and Arbitrations. Do NOT sell.", reviewed:true},
+  "Cedo":               {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Deadlock Protocol", tierNote:"Best-in-class status shotgun. Alt-fire slime instantly applies all status types. Essential.", reviewed:true},
+  "Kuva Bramma":        {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Massive AoE bow. One of the most powerful primaries for clearing rooms in Steel Path.", reviewed:true},
+  "Kuva Zarr":          {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Incredible AoE launcher. Dominant in Steel Path farming.", reviewed:true},
+  "Kuva Ogris":         {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"situational", tierNote:"Strong Kuva launcher. Decent but outshone by Zarr and Bramma.", reviewed:true},
+  "Kuva Kohm":          {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Kuva version with massive multishot. One of the best primaries for status builds.", reviewed:true},
+  "Kuva Hind":          {tier:"average",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"sell",        tierNote:"Below-average Kuva weapon. Farm for mastery, then release the Lich.", reviewed:true},
+  "Kuva Chakkhurr":     {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Unique slug sniper-rifle hybrid. High single-shot damage and fun to use.", reviewed:true},
+  "Kuva Tonkor":        {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Better than base Tonkor. Good AoE launcher for general Steel Path.", reviewed:true},
+  "Tenet Arca Plasmor": {tier:"endgame",  acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Huge AoE beam shotgun. Excellent in corridors and Steel Path.", reviewed:true},
+  "Tenet Envoy":        {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"situational", tierNote:"Rocket launcher variant. Fun but niche.", reviewed:true},
+  "Tenet Flux Rifle":   {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Continuous beam with innate Radiation. Solid for factions.", reviewed:true},
+  "Phenmor":            {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Excellent Incarnon semi-auto rifle from Zariman. Strong crit profile.", reviewed:true},
+  "Felarx":             {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Top-tier Incarnon shotgun from Zariman. Insane burst in Incarnon form.", reviewed:true},
+  "Rubico Prime":       {tier:"endgame",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best-in-class sniper. The go-to weapon for Eidolon hunts.", reviewed:true},
+  "Lanka":              {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Electric sniper, primary choice for Eidolon hunting before Rubico Prime.", reviewed:true},
+  "Proboscis Cernos":   {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Unique pull-and-group bow. Great crowd control utility.", reviewed:true},
+
+  // ── SECONDARIES ───────────────────────────────────────────────
+
+  "Lato":               {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Starter pistol. Pure mastery fodder.", reviewed:true},
+  "MK1-Furis":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
+  "Lex":                {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"S-tier Incarnon — highest single-shot burst of all Incarnon secondaries. Guarantees Slash DoT.", reviewed:true},
+  "Bronco":             {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Strong Incarnon secondary — synergizes extremely well with Secondary Enervate Arcane.", reviewed:true},
+  "Dual Toxocyst":      {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"SS-tier Incarnon — built-in Viral on chaining projectiles. Most satisfying high-KPM secondary.", reviewed:true},
+  "Laetum":             {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"S-tier Incarnon — original meta-setting Incarnon secondary. Exceptional all-rounder.", reviewed:true},
+  "Epitaph":            {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:4, keepSell:"keep",        questReward:"The New War", tierNote:"Best-in-class status primer. Pairs with any high-damage weapon to destroy Steel Path.", reviewed:true},
+  "Kuva Nukor":         {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Possibly the strongest secondary in the game. Chains between enemies, rapid status. Pairs perfectly with Epitaph.", reviewed:true},
+  "Tenet Cycron":       {tier:"endgame",  acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Excellent beam secondary that chains between enemies. Top-tier status and damage.", reviewed:true},
+  "Cyanex":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Unique auto-homing Toxin secondary. Good for new players and comfortable to use.", reviewed:true},
+  "Atomos":             {tier:"good",     acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Decent chain beam for early game. Outclassed quickly.", reviewed:true},
+  "Lex Prime":          {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Reliable high-damage pistol. Excellent Incarnon base.", reviewed:true},
+  "Aklex Prime":        {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Dual Lex Prime. High damage, great Incarnon potential.", reviewed:true},
+  "Euphona Prime":      {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Unique alt-fire slug shotgun pistol. Fun and viable.", reviewed:true},
+  "Sepulcrum":          {tier:"good",     acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Deadlock Protocol", tierNote:"Strong homing secondary. Good all-rounder for mid to late game.", reviewed:true},
+  "Catabolyst":         {tier:"good",     acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Deadlock Protocol", tierNote:"Unique acid-grenade secondary. Fun niche kit.", reviewed:true},
+  "Innodem":            {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best dagger Incarnon. Exceptional KPM if you master aim-glide attacks.", reviewed:true},
+  "Kuva Brakk":         {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Powerful Kuva shotgun pistol. Excellent status and damage at close range.", reviewed:true},
+  "Kuva Seer":          {tier:"average",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"sell",        tierNote:"Below-average Kuva secondary. Farm for mastery then release.", reviewed:true},
+  "Tenet Detron":       {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Shotgun pistol with solid status. Good Sister weapon.", reviewed:true},
+  "Tenet Spirex":       {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"situational", tierNote:"Unique bouncing projectile secondary. Fun but situational.", reviewed:true},
+  "Aksomati Prime":     {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"High fire rate dual pistols. Strong crit profile.", reviewed:true},
+  "Pyrana Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Shotgun pistol that clones itself on kill. Satisfying and strong.", reviewed:true},
+
+  // ── MELEE ─────────────────────────────────────────────────────
+
+  "MK1-Bo":             {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder. Replace immediately.", reviewed:true},
+  "MK1-Furax":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
+  "Skana":              {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Starter sword. Mastery fodder, though it has an Incarnon adapter.", reviewed:true},
+  "Bo":                 {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Mastery fodder.", reviewed:true},
+  "Paracesis":          {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:5, keepSell:"keep",        questReward:"The Sacrifice", tierNote:"Unique extra mod capacity + designed to fight Sentients. Cannot be traded. Do NOT sell.", reviewed:true},
+  "Stropha":            {tier:"endgame",  acquisition:"railjack",  acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Top-tier gunblade. Exceptional damage with gunblade shots. One of the best melee weapons.", reviewed:true},
+  "Nami Solo":          {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Best machete Incarnon. Full Follow-Through lets it shred clumped enemies.", reviewed:true},
+  "Glaive":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Unique thrown melee. Good Incarnon. Fun utility weapon.", reviewed:true},
+  "Nikana":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Used as crafting component for Dragon Nikana. Keep until you have it.", reviewed:true},
+  "Dragon Nikana":      {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Great nikana. Solid endgame sword, Incarnon potential.", reviewed:true},
+  "Nikana Prime":       {tier:"endgame",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Top-tier nikana. High damage and crit, excellent modding platform.", reviewed:true},
+  "Lesion":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Strong Toxin/Status polearm. Good for applying status in Steel Path.", reviewed:true},
+  "Hate":               {tier:"good",     acquisition:"boss",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Iconic Stalker scythe with Incarnon. Rare drop — keep once obtained.", reviewed:true},
+  "Broken War":         {tier:"good",     acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Second Dream", tierNote:"Quest reward sword. Unique unobtainable without replaying quest. Keep.", reviewed:true},
+  "War":                {tier:"good",     acquisition:"boss",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"All parts drop from Stalker. Very rare. Strong heavy blade.", reviewed:true},
+  "Kronen Prime":       {tier:"endgame",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best-in-class tonfa. Blood Rush monster with highest-in-class crit chance.", reviewed:true},
+  "Galatine Prime":     {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Massive heavy blade. Huge cleave and strong damage.", reviewed:true},
+  "Orthos Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Excellent polearm with great reach. Strong all-rounder.", reviewed:true},
+  "Gram Prime":         {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Powerful heavy blade. Strong crit and status.", reviewed:true},
+  "Reaper Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"High damage scythe with Incarnon potential.", reviewed:true},
+  "Zaw (general)":      {tier:"good",     acquisition:"crafted",   acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Custom Zaw builds can rival or exceed most melee. Invest in one.", reviewed:true},
+  "Garuda's Talons":    {tier:"good",     acquisition:"warframe",  acquisitionDifficulty:3, keepSell:"keep",        tierNote:"High Slash proc. Only usable on Garuda. Fun and effective in her kit.", reviewed:true},
+  "Orvius":             {tier:"average",  acquisition:"quest",     acquisitionDifficulty:4, keepSell:"keep",        questReward:"The War Within", tierNote:"Unique quest reward glaive. Cannot be easily replaced. Keep for collection.", reviewed:true},
+  "Tatsu":              {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Unique blade-and-whip that generates Sentient Shields. Fun team support.", reviewed:true},
+  "Tatsu Prime":        {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Prime version with better stats. Solid support melee.", reviewed:true},
+  "Tenet Exec":         {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Powerful Tenet heavy blade. Strong all-rounder.", reviewed:true},
+  "Tenet Agendus":      {tier:"endgame",  acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Hammer with unique shield-charging mechanic. Top-tier burst damage.", reviewed:true},
+  "Kuva Shildeg":       {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Solid Kuva hammer. Good damage and reach.", reviewed:true},
+};
+
+// ── ACQUISITION TYPE LABELS ──────────────────────────────────
+const ACQ_LABELS = {
+  market:     "🛒 Market (Credits)",
+  blueprint:  "📋 Blueprint",
+  relic:      "💠 Void Relics",
+  quest:      "📜 Quest Reward",
+  boss:       "💀 Boss Farm",
+  lich:       "👁 Kuva Lich",
+  sister:     "👁 Sister of Parvos",
+  syndicate:  "🔮 Syndicate",
+  dojo:       "🏯 Clan Dojo",
+  clan:       "🤝 Clan Research",
+  railjack:   "🚀 Railjack",
+  crafted:    "🔧 Kitgun / Zaw",
+  warframe:   "🦾 Warframe Unlock",
+  event:      "📅 Event / Baro",
+  unknown:    "❓ Unknown",
+};
+
+// ── TIER LABELS ──────────────────────────────────────────────
+const TIER_LABELS = {
+  endgame: "🔥 Endgame",
+  good:    "👍 Good",
+  average: "😐 Average",
+  fodder:  "🗑 Mastery Fodder",
+};
+
+// ── TIER CSS CLASS ───────────────────────────────────────────
+function tc(tier){ return {endgame:"te", good:"tg", average:"tg", fodder:"tf"}[tier] || "tu"; }
+
+// ── STATE ────────────────────────────────────────────────────
+let allWeapons = [];   // merged API + curated
+let userState  = {};
+let currentUser = "guest";
+let activeFilters = {
+  type:"all", subtype:"all", tier:"all",
+  search:"", showOwned:false, showUnmastered:false, showUnreviewed:false
+};
+const UNREVIEWED_THRESHOLD = 0.25; // show banner if >25% unreviewed
+
+// ── STORAGE ──────────────────────────────────────────────────
+function lsGet(k){ try{ const r=localStorage.getItem(k); return r?JSON.parse(r):null; }catch{return null;} }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function saveState(){ lsSet("wf_state_"+currentUser, userState); }
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init(){
+  const saved = lsGet("wf_username");
+  if(saved){ currentUser=saved; document.getElementById("uname").textContent=saved; }
+  userState = lsGet("wf_state_"+currentUser) || {};
+
+  lsub("Fetching weapon data…");
+  const ok = await fetchWeapons();
+  if(!ok) return;
+
+  lsub("Merging curated data…");
+  checkUpdateBanner();
+  renderFilters();
+  renderGrid();
+  bindEvents();
+  document.getElementById("ldr").style.display = "none";
+}
+
+function lsub(msg){ document.getElementById("lsub").textContent = msg; }
+
+// ── API FETCH & MERGE ─────────────────────────────────────────
+const API_URL = "https://api.warframestat.us/weapons?language=en";
+const CDN_URL = "https://cdn.warframestat.us/img/";
+const VALID_TYPES = new Set(["Primary","Secondary","Melee"]);
+
+async function fetchWeapons(){
+  try {
+    const res = await fetch(API_URL);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw = await res.json();
+
+    allWeapons = raw
+      .filter(w => VALID_TYPES.has(w.type) && !w.excludeFromCodex)
+      .map(w => merge(w))
+      .sort((a,b) => a.name.localeCompare(b.name));
+
+    return true;
+  } catch(e){
+    document.getElementById("ldr").style.display = "none";
+    const err = document.getElementById("api-error");
+    document.getElementById("api-error-msg").textContent = e.message;
+    err.style.display = "block";
+    return false;
+  }
+}
+
+// ── MERGE API + CURATED ───────────────────────────────────────
+function merge(apiW){
+  const curated = CURATED[apiW.name] || {};
+  const reviewed = curated.reviewed === true;
+
+  // ── AUTO-DERIVE acquisition from API drop/source data ────────
+  const dropText = buildDropText(apiW);
+  let acq    = curated.acquisition    || autoAcq(apiW, dropText);
+  let diff   = curated.acquisitionDifficulty || autoDiff(acq, apiW);
+  let tier   = curated.tier           || "average";
+  let note   = curated.tierNote       || "";
+  let keep   = curated.keepSell       || autoKeepSell(acq, tier);
+  let quest  = curated.questReward    || null;
+
+  // Build components from API
+  const components = buildComponents(apiW);
+
+  // Image with fallbacks
+  const imgSrc = apiW.imageName
+    ? CDN_URL + apiW.imageName
+    : (apiW.wikiaThumbnail || "");
+
+  return {
+    id:                   apiW.uniqueName || apiW.name,
+    name:                 apiW.name,
+    type:                 apiW.type,
+    subtype:              apiW.category || apiW.weaponType || "Unknown",
+    imageSrc:             imgSrc,
+    wikiUrl:              apiW.wikiaUrl || `https://wiki.warframe.com/w/${encodeURIComponent(apiW.name.replace(/ /g,"_"))}`,
+    masteryReq:           apiW.masteryReq || 0,
+    tier,
+    acquisition:          acq,
+    acquisitionDifficulty:diff,
+    acquisitionDetail:    dropText,
+    tierNote:             note,
+    keepSell:             keep,
+    questReward:          quest,
+    components,
+    reviewed,
+  };
+}
+
+function buildDropText(w){
+  if(!w.drops || !w.drops.length){
+    if(w.tradable === false && (w.name||"").toLowerCase().includes("prime")) return "Vaulted Prime — check Void Relics or trade chat.";
+    return "Check the Warframe Wiki for acquisition details.";
+  }
+  // Summarise up to 3 drop locations
+  const locs = [...new Set(w.drops.slice(0,6).map(d => d.location))].slice(0,3);
+  return locs.join(" · ");
+}
+
+function buildComponents(w){
+  if(!w.components) return [];
+  return w.components
+    .filter(c => c.name !== "Blueprint")
+    .map(c => ({
+      name: c.name,
+      qty:  c.itemCount || null,
+      source: (c.drops||[]).slice(0,2).map(d=>d.location).join(", ") || ""
+    }));
+}
+
+function autoAcq(w, dropText){
+  const name = w.name || "";
+  const dt   = dropText.toLowerCase();
+  if(dt.includes("kuva lich") || name.startsWith("Kuva ")) return "lich";
+  if(dt.includes("sister")    || name.startsWith("Tenet ")) return "sister";
+  if(dt.includes("syndicate") || dt.includes("holdfasts") || dt.includes("zariman")) return "syndicate";
+  if(dt.includes("dojo") || dt.includes("research")) return "dojo";
+  if(dt.includes("relic") || dt.includes("void")) return "relic";
+  if(dt.includes("quest") || w.tradable === false) return "quest";
+  if(dt.includes("market") || dt.includes("credits")) return "market";
+  if(dt.includes("boss") || dt.includes("stalker")) return "boss";
+  if(dt.includes("railjack") || dt.includes("proxima")) return "railjack";
+  if(name.includes("Wraith") || name.includes("Vandal")) return "event";
+  if(w.components && w.components.length > 1) return "blueprint";
+  return "unknown";
+}
+
+function autoDiff(acq, w){
+  const diff = {
+    market:1, blueprint:2, clan:2, dojo:3, relic:3,
+    syndicate:3, boss:3, quest:4, lich:4, sister:4,
+    railjack:4, event:4, crafted:3, warframe:3, unknown:2
+  };
+  let base = diff[acq] || 2;
+  // Bump up for Primes and hard resources
+  if((w.name||"").includes("Prime") && base < 3) base = 3;
+  return Math.min(base, 5);
+}
+
+function autoKeepSell(acq, tier){
+  if(["lich","sister","quest","boss","event","railjack"].includes(acq)) return "keep";
+  if(tier === "endgame") return "keep";
+  if(tier === "fodder")  return "sell";
+  return "situational";
+}
+
+// ── UPDATE BANNER ─────────────────────────────────────────────
+function checkUpdateBanner(){
+  const total = allWeapons.length;
+  const unreviewed = allWeapons.filter(w => !w.reviewed).length;
+  const ratio = unreviewed / total;
+
+  if(ratio > UNREVIEWED_THRESHOLD){
+    const banner = document.getElementById("update-banner");
+    banner.classList.remove("hidden");
+    document.getElementById("banner-msg").textContent =
+      `${unreviewed} of ${total} weapons (${Math.round(ratio*100)}%) are missing community-verified tier ratings, difficulty scores, and keep/sell recommendations. ` +
+      `These judgements require experienced player knowledge and cannot be derived from stats alone. ` +
+      `To add evaluations: open Claude Code, point it at this repo, and follow the instructions in README.md → "Updating Curated Data".`;
+  }
+}
+
+// ── FILTERS ───────────────────────────────────────────────────
+function renderFilters(){
+  const types = ["all","Primary","Secondary","Melee"];
+  const tiers = ["all","endgame","good","average","fodder"];
+  const subtypes = getSubtypes();
+
+  document.getElementById("ftype").innerHTML = types.map(t=>
+    `<button class="fb ${activeFilters.type===t?"on":""}" data-f="type" data-v="${t}">${t==="all"?"All Types":t}</button>`
+  ).join("");
+
+  document.getElementById("fsub").innerHTML = ["all",...subtypes].map(s=>
+    `<button class="fb ${activeFilters.subtype===s?"on":""}" data-f="sub" data-v="${s}">${s==="all"?"All Subtypes":s}</button>`
+  ).join("");
+
+  document.getElementById("ftier").innerHTML = tiers.map(t=>
+    `<button class="fb tb ${tc(t)} ${activeFilters.tier===t?"on":""}" data-f="tier" data-v="${t}">${t==="all"?"All Tiers":TIER_LABELS[t]||t}</button>`
+  ).join("");
+}
+
+function getSubtypes(){
+  const pool = activeFilters.type==="all" ? allWeapons : allWeapons.filter(w=>w.type===activeFilters.type);
+  return [...new Set(pool.map(w=>w.subtype))].sort();
+}
+
+// ── GRID ──────────────────────────────────────────────────────
+function renderGrid(){
+  const ws = filtered();
+  const mc = ws.filter(w=>userState[w.id]?.mastery).length;
+  document.getElementById("rcount").textContent = `${ws.length} weapons · ${mc} mastered`;
+
+  if(!ws.length){
+    document.getElementById("grid").innerHTML=`<div class="empty"><div class="empty-ico">⚔</div><p>No weapons match your filters.</p><button onclick="clearFilters()">Clear Filters</button></div>`;
+    return;
+  }
+  document.getElementById("grid").innerHTML = ws.map(card).join("");
+}
+
+// ── CARD ──────────────────────────────────────────────────────
+function card(w){
+  const s = userState[w.id] || {};
+  const tclass = tc(w.tier);
+
+  const dots = Array.from({length:5},(_,i)=>
+    `<span class="dot ${i<w.acquisitionDifficulty?"f":""}"></span>`
+  ).join("");
+
+  const unreviewedBadge = !w.reviewed
+    ? `<div class="badge-unreviewed" title="No community evaluation yet. Tier, difficulty and keep/sell are auto-estimated — treat them as rough guidance only.">⚠ Unreviewed</div>`
+    : "";
+
+  const questBadge = w.questReward
+    ? `<div class="badge bq">📜 ${w.questReward}</div>`
+    : "";
+
+  const acqBadge = `<div class="badge ba">${ACQ_LABELS[w.acquisition] || w.acquisition}</div>`;
+
+  const keepSellLabel = {keep:"✅ Keep",sell:"❌ Sell",situational:"⚖ Situational"}[w.keepSell] || "";
+  const keepSellBadge = keepSellLabel
+    ? `<div class="badge ba" style="margin-left:auto">${keepSellLabel}</div>`
+    : "";
+
+  const noteClass = w.reviewed ? "tn" : "tn unreviewed-note";
+  const noteText  = w.reviewed
+    ? w.tierNote
+    : (w.tierNote || "No community evaluation yet. Acquisition type and difficulty are auto-estimated from API data.");
+
+  const comps = w.components.length
+    ? `<div class="cs">
+        <div class="ct" onclick="togComp(this)">▶ Components (${w.components.length})</div>
+        <div class="cl" style="display:none">
+          ${w.components.map(c=>`
+            <div class="cr2">
+              <span class="cn">${c.name}</span>
+              ${c.qty ? `<span class="cq">×${c.qty.toLocaleString()}</span>` : ""}
+              ${c.source ? `<span class="csrc">${c.source}</span>` : ""}
+            </div>`).join("")}
+        </div>
+      </div>`
+    : "";
+
+  const imgHtml = w.imageSrc
+    ? `<img class="wimg" src="${w.imageSrc}" alt="${w.name}" loading="lazy"
+        onerror="this.onerror=null;this.style.opacity='.3';this.src='data:image/svg+xml,<svg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'64\\' height=\\'64\\'><text y=\\'50\\' font-size=\\'40\\' text-anchor=\\'middle\\' x=\\'32\\'>⚔</text></svg>'">`
+    : `<span style="font-size:1.8rem;opacity:.3">⚔</span>`;
+
+  return `<div class="card ${s.mastery?"mastered":""} ${s.owned&&!s.mastery?"owned":""}" data-id="${escHtml(w.id)}">
+  <div class="stripe ${tclass}"></div>
+  <div class="ch">
+    <div class="img-w">${imgHtml}</div>
+    <div class="ctb">
+      <div class="wname">${escHtml(w.name)}</div>
+      <div class="wmeta">
+        <span class="tt">${escHtml(w.type)}</span>
+        <span class="st">${escHtml(w.subtype)}</span>
+        ${w.masteryReq>0?`<span class="mr">MR${w.masteryReq}</span>`:""}
+      </div>
+      <div class="tlbl ${tclass}">${TIER_LABELS[w.tier]||w.tier}</div>
+    </div>
+  </div>
+  <div class="cb">
+    ${unreviewedBadge}
+    ${questBadge}
+    <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${acqBadge}${keepSellBadge}</div>
+    <div class="dr"><span class="dl">Obtain</span><div class="dots">${dots}</div></div>
+    <p class="ad">${escHtml(w.acquisitionDetail)}</p>
+    <p class="${noteClass}">${escHtml(noteText)}</p>
+    ${comps}
+  </div>
+  <div class="cf">
+    <div class="tr-row">
+      <button class="tbtn ${s.owned?"on":""}" onclick="togOwned(${JSON.stringify(w.id)})">
+        <span>${s.owned?"✓":"+"}</span> ${s.owned?"Owned":"Not Owned"}
+      </button>
+      <button class="tbtn mb ${s.mastery?"on":""}" onclick="togMastery(${JSON.stringify(w.id)})">
+        <span>${s.mastery?"★":"☆"}</span> ${s.mastery?"Mastered":"Mastery"}
+      </button>
+    </div>
+    <a href="${w.wikiUrl}" target="_blank" rel="noopener" class="wl">Wiki ↗</a>
+  </div>
+</div>`;
+}
+
+function escHtml(s){
+  if(s == null) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── TOGGLES ───────────────────────────────────────────────────
+function togOwned(id){
+  if(!userState[id]) userState[id]={};
+  userState[id].owned = !userState[id].owned;
+  saveState(); refreshCard(id);
+}
+function togMastery(id){
+  if(!userState[id]) userState[id]={};
+  userState[id].mastery = !userState[id].mastery;
+  if(userState[id].mastery) userState[id].owned = true;
+  saveState(); refreshCard(id);
+  updateCount();
+}
+function refreshCard(id){
+  const w = allWeapons.find(x=>x.id===id);
+  if(!w) return;
+  const el = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
+  if(!el) return;
+  const tmp = document.createElement("div");
+  tmp.innerHTML = card(w);
+  el.replaceWith(tmp.firstElementChild);
+}
+function updateCount(){
+  const ws = filtered();
+  const mc = ws.filter(w=>userState[w.id]?.mastery).length;
+  document.getElementById("rcount").textContent = `${ws.length} weapons · ${mc} mastered`;
+}
+function togComp(btn){
+  const list = btn.nextElementSibling;
+  const open = list.style.display !== "none";
+  list.style.display = open ? "none" : "block";
+  btn.textContent = btn.textContent.replace(open?"▼":"▶", open?"▶":"▼");
+}
+
+// ── FILTERING ─────────────────────────────────────────────────
+function filtered(){
+  return allWeapons.filter(w=>{
+    if(activeFilters.type!=="all"        && w.type !== activeFilters.type) return false;
+    if(activeFilters.subtype!=="all"     && w.subtype !== activeFilters.subtype) return false;
+    if(activeFilters.tier!=="all"        && w.tier !== activeFilters.tier) return false;
+    if(activeFilters.showOwned           && !userState[w.id]?.owned) return false;
+    if(activeFilters.showUnmastered      && userState[w.id]?.mastery) return false;
+    if(activeFilters.showUnreviewed      && w.reviewed) return false;
+    if(activeFilters.search){
+      const q = activeFilters.search.toLowerCase();
+      if(!w.name.toLowerCase().includes(q) &&
+         !w.subtype.toLowerCase().includes(q) &&
+         !(w.questReward||"").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function clearFilters(){
+  activeFilters={type:"all",subtype:"all",tier:"all",search:"",showOwned:false,showUnmastered:false,showUnreviewed:false};
+  document.getElementById("srch").value="";
+  ["qowned","qunmast","qunreviewed"].forEach(id=>document.getElementById(id).classList.remove("on"));
+  renderFilters(); renderGrid();
+}
+
+// ── EVENTS ────────────────────────────────────────────────────
+function bindEvents(){
+  document.getElementById("ftype").addEventListener("click",e=>{
+    const b=e.target.closest(".fb"); if(!b) return;
+    activeFilters.type=b.dataset.v; activeFilters.subtype="all";
+    renderFilters(); renderGrid();
+  });
+  document.getElementById("fsub").addEventListener("click",e=>{
+    const b=e.target.closest(".fb"); if(!b) return;
+    activeFilters.subtype=b.dataset.v; renderFilters(); renderGrid();
+  });
+  document.getElementById("ftier").addEventListener("click",e=>{
+    const b=e.target.closest(".fb"); if(!b) return;
+    activeFilters.tier=b.dataset.v; renderFilters(); renderGrid();
+  });
+
+  let sd;
+  document.getElementById("srch").addEventListener("input",e=>{
+    clearTimeout(sd); sd=setTimeout(()=>{ activeFilters.search=e.target.value.trim(); renderGrid(); },200);
+  });
+
+  const qMap = {qowned:"showOwned", qunmast:"showUnmastered", qunreviewed:"showUnreviewed"};
+  Object.entries(qMap).forEach(([id,key])=>{
+    document.getElementById(id).addEventListener("click",e=>{
+      activeFilters[key]=!activeFilters[key];
+      e.currentTarget.classList.toggle("on",activeFilters[key]); renderGrid();
+    });
+  });
+
+  document.getElementById("setuser").addEventListener("click",()=>{
+    document.getElementById("umodal").style.display="flex";
+    document.getElementById("uinput").focus();
+  });
+  document.getElementById("usave").addEventListener("click",()=>{
+    const v=document.getElementById("uinput").value.trim(); if(!v) return;
+    currentUser=v; lsSet("wf_username",v); saveState();
+    document.getElementById("uname").textContent=v;
+    document.getElementById("umodal").style.display="none";
+    toast(`Profile saved as "${v}"`);
+  });
+  document.getElementById("ucancl").addEventListener("click",()=>{
+    document.getElementById("umodal").style.display="none";
+  });
+  document.getElementById("umodal").addEventListener("click",e=>{
+    if(e.target===document.getElementById("umodal")) document.getElementById("umodal").style.display="none";
+  });
+  document.getElementById("uinput").addEventListener("keydown",e=>{
+    if(e.key==="Enter") document.getElementById("usave").click();
+  });
+}
+
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2500);
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
