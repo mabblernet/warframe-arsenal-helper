@@ -196,6 +196,24 @@ body::before{content:'';position:fixed;inset:0;background:
 /* ── ESTIMATED (unreviewed) ─────────────────────────────── */
 .badge-est{opacity:.5;font-style:italic}
 
+/* ── CONFLICT INDICATOR ─────────────────────────────────── */
+.card-hd-wrap{position:relative}
+.badge-conflict{
+  position:absolute;top:8px;right:8px;
+  width:20px;height:20px;border-radius:50%;
+  background:rgba(224,90,43,.15);border:1px solid var(--red);
+  color:var(--red);font-size:.78rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  cursor:help;flex-shrink:0;line-height:1;
+}
+
+/* ── OBTAIN PLACEHOLDER (unreviewed) ───────────────────── */
+.dr-placeholder{font-size:.7rem;color:var(--t3);font-style:italic;font-family:var(--fd);letter-spacing:.04em}
+
+/* ── QUEST BADGE AS LINK ────────────────────────────────── */
+a.badge{text-decoration:none;cursor:pointer;transition:opacity var(--tr)}
+a.badge:hover{opacity:.8}
+
 /* ── SCROLLBAR ──────────────────────────────────────────── */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border-b);border-radius:3px}
@@ -291,122 +309,8 @@ body::before{content:'';position:fixed;inset:0;background:
 <script>
 'use strict';
 
-// ═══════════════════════════════════════════════════════════════
-// CURATED JUDGEMENT DATA
-// Keys = exact weapon name from the Warframe API.
-// Only fields that CANNOT be derived from the API go here.
-// "reviewed: true" means a human has verified this entry.
-//
-// tier:                "endgame" | "good" | "average" | "fodder"
-// acquisition:         see ACQ_LABELS below
-// acquisitionDifficulty: 1 (trivial) → 5 (extremely hard)
-// keepSell:            "keep" | "sell" | "situational"
-// tierNote:            short community verdict string
-// questReward:         name of quest if weapon is a quest reward
-// reviewed:            true = human-verified, false = AI-stub only
-// ═══════════════════════════════════════════════════════════════
-const CURATED = {
-  // ── PRIMARIES ─────────────────────────────────────────────────
-
-  // Market / blueprint easy
-  "MK1-Braton":         {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder. Replace as soon as possible.", reviewed:true},
-  "MK1-Paris":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
-  "MK1-Strun":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
-  "Braton":             {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Mastery fodder. Braton Prime is the better option.", reviewed:true},
-  "Paris":              {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Excellent with Incarnon Genesis — highest status chance of all bows in Incarnon form.", reviewed:true},
-  "Strun":              {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Mastery fodder. Strun Wraith is strictly better.", reviewed:true},
-  "Boltor":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Strong Incarnon — one of the best primary Incarnons. SS-tier slash damage.", reviewed:true},
-  "Latron":             {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"SS-tier Incarnon — best primary for raw stopping power. Doubles as armor-strip machine.", reviewed:true},
-  "Torid":              {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"SS-tier Incarnon — most popular Incarnon weapon. Excellent AoE Toxin crowd-clearing.", reviewed:true},
-  "Miter":              {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"S-tier Incarnon — competitor to Latron for best primary. Slightly inconsistent homing.", reviewed:true},
-  "Soma":               {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"situational", tierNote:"Classic high-crit rifle. Solid mid-game, Soma Prime is the better investment.", reviewed:true},
-  "Tonkor":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"sell",        tierNote:"Decent grenade launcher but outclassed by Kuva/Tenet launchers.", reviewed:true},
-  "Ignis":              {tier:"average",  acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Good early flamethrower. Ignis Wraith is strictly better in every way.", reviewed:true},
-  "Ignis Wraith":       {tier:"good",     acquisition:"clan",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best flamethrower. Wide AoE cone, strong for dense packs. Still viable in Steel Path.", reviewed:true},
-  "Hek":                {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"sell",        tierNote:"Strong early/mid shotgun. Vaykor Hek (Syndicate) is the better long-term version.", reviewed:true},
-  "Vaykor Hek":         {tier:"good",     acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Strong syndicate shotgun with built-in Health Conversion proc. Solid Steel Path.", reviewed:true},
-  "Kohm":               {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Unique spinup shotgun with insane multishot scaling. Good status applicator.", reviewed:true},
-  "Amprex":             {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Chain lightning that hits multiple enemies. Still fun and effective with good builds.", reviewed:true},
-  "Soma Prime":         {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Reliable high-crit rifle. Solid all-rounder for general content.", reviewed:true},
-  "Braton Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Balanced and reliable prime. Good for new players reaching relics.", reviewed:true},
-  "Boltor Prime":       {tier:"average",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"sell",        tierNote:"Once meta, now power-crept. Build for mastery and sell.", reviewed:true},
-  "Paris Prime":        {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Good prime bow with Incarnon potential.", reviewed:true},
-  "Dread":              {tier:"good",     acquisition:"boss",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Iconic Slash-heavy bow from Stalker. Incarnon available. Rare drop — keep once obtained.", reviewed:true},
-  "Nataruk":            {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:4, keepSell:"keep",        questReward:"The New War", tierNote:"One of the best weapons in the game. Exceptional for Steel Path and Arbitrations. Do NOT sell.", reviewed:true},
-  "Cedo":               {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Deadlock Protocol", tierNote:"Best-in-class status shotgun. Alt-fire slime instantly applies all status types. Essential.", reviewed:true},
-  "Kuva Bramma":        {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Massive AoE bow. One of the most powerful primaries for clearing rooms in Steel Path.", reviewed:true},
-  "Kuva Zarr":          {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Incredible AoE launcher. Dominant in Steel Path farming.", reviewed:true},
-  "Kuva Ogris":         {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"situational", tierNote:"Strong Kuva launcher. Decent but outshone by Zarr and Bramma.", reviewed:true},
-  "Kuva Kohm":          {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Kuva version with massive multishot. One of the best primaries for status builds.", reviewed:true},
-  "Kuva Hind":          {tier:"average",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"sell",        tierNote:"Below-average Kuva weapon. Farm for mastery, then release the Lich.", reviewed:true},
-  "Kuva Chakkhurr":     {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Unique slug sniper-rifle hybrid. High single-shot damage and fun to use.", reviewed:true},
-  "Kuva Tonkor":        {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Better than base Tonkor. Good AoE launcher for general Steel Path.", reviewed:true},
-  "Tenet Arca Plasmor": {tier:"endgame",  acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Huge AoE beam shotgun. Excellent in corridors and Steel Path.", reviewed:true},
-  "Tenet Envoy":        {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"situational", tierNote:"Rocket launcher variant. Fun but niche.", reviewed:true},
-  "Tenet Flux Rifle":   {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Continuous beam with innate Radiation. Solid for factions.", reviewed:true},
-  "Phenmor":            {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Excellent Incarnon semi-auto rifle from Zariman. Strong crit profile.", reviewed:true},
-  "Felarx":             {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Top-tier Incarnon shotgun from Zariman. Insane burst in Incarnon form.", reviewed:true},
-  "Rubico Prime":       {tier:"endgame",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best-in-class sniper. The go-to weapon for Eidolon hunts.", reviewed:true},
-  "Lanka":              {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Electric sniper, primary choice for Eidolon hunting before Rubico Prime.", reviewed:true},
-  "Proboscis Cernos":   {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Unique pull-and-group bow. Great crowd control utility.", reviewed:true},
-
-  // ── SECONDARIES ───────────────────────────────────────────────
-
-  "Lato":               {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Starter pistol. Pure mastery fodder.", reviewed:true},
-  "MK1-Furis":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
-  "Lex":                {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"S-tier Incarnon — highest single-shot burst of all Incarnon secondaries. Guarantees Slash DoT.", reviewed:true},
-  "Bronco":             {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Strong Incarnon secondary — synergizes extremely well with Secondary Enervate Arcane.", reviewed:true},
-  "Dual Toxocyst":      {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"SS-tier Incarnon — built-in Viral on chaining projectiles. Most satisfying high-KPM secondary.", reviewed:true},
-  "Laetum":             {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"S-tier Incarnon — original meta-setting Incarnon secondary. Exceptional all-rounder.", reviewed:true},
-  "Epitaph":            {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:4, keepSell:"keep",        questReward:"The New War", tierNote:"Best-in-class status primer. Pairs with any high-damage weapon to destroy Steel Path.", reviewed:true},
-  "Kuva Nukor":         {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Possibly the strongest secondary in the game. Chains between enemies, rapid status. Pairs perfectly with Epitaph.", reviewed:true},
-  "Tenet Cycron":       {tier:"endgame",  acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Excellent beam secondary that chains between enemies. Top-tier status and damage.", reviewed:true},
-  "Cyanex":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Unique auto-homing Toxin secondary. Good for new players and comfortable to use.", reviewed:true},
-  "Atomos":             {tier:"good",     acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Decent chain beam for early game. Outclassed quickly.", reviewed:true},
-  "Lex Prime":          {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Reliable high-damage pistol. Excellent Incarnon base.", reviewed:true},
-  "Aklex Prime":        {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Dual Lex Prime. High damage, great Incarnon potential.", reviewed:true},
-  "Euphona Prime":      {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Unique alt-fire slug shotgun pistol. Fun and viable.", reviewed:true},
-  "Sepulcrum":          {tier:"good",     acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Deadlock Protocol", tierNote:"Strong homing secondary. Good all-rounder for mid to late game.", reviewed:true},
-  "Catabolyst":         {tier:"good",     acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Deadlock Protocol", tierNote:"Unique acid-grenade secondary. Fun niche kit.", reviewed:true},
-  "Innodem":            {tier:"endgame",  acquisition:"syndicate", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best dagger Incarnon. Exceptional KPM if you master aim-glide attacks.", reviewed:true},
-  "Kuva Brakk":         {tier:"endgame",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Powerful Kuva shotgun pistol. Excellent status and damage at close range.", reviewed:true},
-  "Kuva Seer":          {tier:"average",  acquisition:"lich",      acquisitionDifficulty:4, keepSell:"sell",        tierNote:"Below-average Kuva secondary. Farm for mastery then release.", reviewed:true},
-  "Tenet Detron":       {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Shotgun pistol with solid status. Good Sister weapon.", reviewed:true},
-  "Tenet Spirex":       {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"situational", tierNote:"Unique bouncing projectile secondary. Fun but situational.", reviewed:true},
-  "Aksomati Prime":     {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"High fire rate dual pistols. Strong crit profile.", reviewed:true},
-  "Pyrana Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Shotgun pistol that clones itself on kill. Satisfying and strong.", reviewed:true},
-
-  // ── MELEE ─────────────────────────────────────────────────────
-
-  "MK1-Bo":             {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder. Replace immediately.", reviewed:true},
-  "MK1-Furax":          {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Pure mastery fodder.", reviewed:true},
-  "Skana":              {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Starter sword. Mastery fodder, though it has an Incarnon adapter.", reviewed:true},
-  "Bo":                 {tier:"fodder",   acquisition:"market",    acquisitionDifficulty:1, keepSell:"sell",        tierNote:"Mastery fodder.", reviewed:true},
-  "Paracesis":          {tier:"endgame",  acquisition:"quest",     acquisitionDifficulty:5, keepSell:"keep",        questReward:"The Sacrifice", tierNote:"Unique extra mod capacity + designed to fight Sentients. Cannot be traded. Do NOT sell.", reviewed:true},
-  "Stropha":            {tier:"endgame",  acquisition:"railjack",  acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Top-tier gunblade. Exceptional damage with gunblade shots. One of the best melee weapons.", reviewed:true},
-  "Nami Solo":          {tier:"endgame",  acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Best machete Incarnon. Full Follow-Through lets it shred clumped enemies.", reviewed:true},
-  "Glaive":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:2, keepSell:"keep",        tierNote:"Unique thrown melee. Good Incarnon. Fun utility weapon.", reviewed:true},
-  "Nikana":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Used as crafting component for Dragon Nikana. Keep until you have it.", reviewed:true},
-  "Dragon Nikana":      {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Great nikana. Solid endgame sword, Incarnon potential.", reviewed:true},
-  "Nikana Prime":       {tier:"endgame",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Top-tier nikana. High damage and crit, excellent modding platform.", reviewed:true},
-  "Lesion":             {tier:"good",     acquisition:"blueprint", acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Strong Toxin/Status polearm. Good for applying status in Steel Path.", reviewed:true},
-  "Hate":               {tier:"good",     acquisition:"boss",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Iconic Stalker scythe with Incarnon. Rare drop — keep once obtained.", reviewed:true},
-  "Broken War":         {tier:"good",     acquisition:"quest",     acquisitionDifficulty:3, keepSell:"keep",        questReward:"The Second Dream", tierNote:"Quest reward sword. Unique unobtainable without replaying quest. Keep.", reviewed:true},
-  "War":                {tier:"good",     acquisition:"boss",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"All parts drop from Stalker. Very rare. Strong heavy blade.", reviewed:true},
-  "Kronen Prime":       {tier:"endgame",  acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Best-in-class tonfa. Blood Rush monster with highest-in-class crit chance.", reviewed:true},
-  "Galatine Prime":     {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Massive heavy blade. Huge cleave and strong damage.", reviewed:true},
-  "Orthos Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Excellent polearm with great reach. Strong all-rounder.", reviewed:true},
-  "Gram Prime":         {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Powerful heavy blade. Strong crit and status.", reviewed:true},
-  "Reaper Prime":       {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"High damage scythe with Incarnon potential.", reviewed:true},
-  "Zaw (general)":      {tier:"good",     acquisition:"crafted",   acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Custom Zaw builds can rival or exceed most melee. Invest in one.", reviewed:true},
-  "Garuda's Talons":    {tier:"good",     acquisition:"warframe",  acquisitionDifficulty:3, keepSell:"keep",        tierNote:"High Slash proc. Only usable on Garuda. Fun and effective in her kit.", reviewed:true},
-  "Orvius":             {tier:"average",  acquisition:"quest",     acquisitionDifficulty:4, keepSell:"keep",        questReward:"The War Within", tierNote:"Unique quest reward glaive. Cannot be easily replaced. Keep for collection.", reviewed:true},
-  "Tatsu":              {tier:"good",     acquisition:"dojo",      acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Unique blade-and-whip that generates Sentient Shields. Fun team support.", reviewed:true},
-  "Tatsu Prime":        {tier:"good",     acquisition:"relic",     acquisitionDifficulty:3, keepSell:"keep",        tierNote:"Prime version with better stats. Solid support melee.", reviewed:true},
-  "Tenet Exec":         {tier:"good",     acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Powerful Tenet heavy blade. Strong all-rounder.", reviewed:true},
-  "Tenet Agendus":      {tier:"endgame",  acquisition:"sister",    acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Hammer with unique shield-charging mechanic. Top-tier burst damage.", reviewed:true},
-  "Kuva Shildeg":       {tier:"good",     acquisition:"lich",      acquisitionDifficulty:4, keepSell:"keep",        tierNote:"Solid Kuva hammer. Good damage and reach.", reviewed:true},
-};
+// CURATED is loaded at runtime from curated.json (see fetchWeapons)
+let CURATED = {};
 
 // ── ACQUISITION TYPE LABELS ──────────────────────────────────
 const ACQ_LABELS = {
@@ -486,12 +390,24 @@ function resolveWeaponType(apiW){
 
 async function fetchWeapons(){
   try {
-    const res = await fetch(API_URL);
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-    const raw = await res.json();
+    const [weaponsRes, curatedRes] = await Promise.allSettled([
+      fetch(API_URL),
+      fetch("curated.json")
+    ]);
+
+    if(weaponsRes.status === "rejected" || !weaponsRes.value.ok)
+      throw new Error(weaponsRes.reason?.message || `HTTP ${weaponsRes.value?.status}`);
+
+    const raw = await weaponsRes.value.json();
+
+    if(curatedRes.status === "fulfilled" && curatedRes.value.ok){
+      try { CURATED = await curatedRes.value.json(); } catch(e){}
+    }
 
     allWeapons = raw
-      .filter(w => resolveWeaponType(w) !== null && !w.excludeFromCodex)
+      .filter(w => resolveWeaponType(w) !== null
+                && !w.excludeFromCodex
+                && w.type !== "Zaw Component")
       .map(w => merge(w))
       .sort((a,b) => a.name.localeCompare(b.name));
 
@@ -590,14 +506,32 @@ function autoAcq(w, dropText){
 
 function autoDiff(acq, w){
   const diff = {
-    market:1, blueprint:2, clan:2, dojo:3, relic:3,
-    syndicate:3, boss:3, quest:4, lich:4, sister:4,
-    railjack:4, event:4, crafted:3, warframe:3, unknown:2
+    market:1, blueprint:2,
+    clan:3, dojo:3, crafted:3, warframe:3,
+    syndicate:4, quest:4, lich:4, sister:4,
+    relic:5, boss:5, railjack:5, event:5,
+    unknown:2
   };
   let base = diff[acq] || 2;
-  // Bump up for Primes and hard resources
   if((w.name||"").includes("Prime") && base < 3) base = 3;
   return Math.min(base, 5);
+}
+
+function diffTooltip(acq, diff){
+  const reasons = {
+    1:"Very easy — buy already built from the Market for Credits",
+    2:"Easy — buy Blueprint from the Market and craft with common resources",
+    3:"Medium — obtained from Clan Research or built from vendor parts",
+    4:"Hard — requires Syndicate standing, Kuva Lich/Sister farming, or completing a quest",
+    5:"Very hard — not always available (vaulted/event/Baro), requires consuming resources to attempt (relics, mission entry), or highly randomized drop chance",
+  };
+  return `${diff}/5 · ${reasons[diff]||""}`;
+}
+
+function resolveConflict(w){
+  if(w.acquisition === "unknown") return "Acquisition method could not be determined from API data — manual review needed.";
+  if(w.acquisition === "quest" && w.tradable !== false) return "Auto-detected as quest reward but item appears tradable — may be misclassified.";
+  return "";
 }
 
 function autoKeepSell(acq, tier){
@@ -665,26 +599,33 @@ function card(w){
   const s = userState[w.id] || {};
   const tclass = tc(w.tier);
 
-  const dots = Array.from({length:5},(_,i)=>
-    `<span class="dot ${i<w.acquisitionDifficulty?"f":""}"></span>`
-  ).join("");
-
   const unreviewedBadge = !w.reviewed
     ? `<div class="badge-unreviewed" title="No community evaluation yet. Tier, difficulty and keep/sell are auto-estimated — treat them as rough guidance only.">⚠ Unreviewed</div>`
     : "";
 
-  const questBadge = w.questReward
-    ? `<div class="badge bq">📜 ${w.questReward}</div>`
+  const questBadge = (w.reviewed && w.questReward)
+    ? `<a class="badge bq" href="https://wiki.warframe.com/w/${encodeURIComponent(w.questReward.replace(/ /g,'_'))}" target="_blank" rel="noopener" title="Quest: ${escHtml(w.questReward)} — click to open wiki">📜 ${escHtml(w.questReward)}</a>`
     : "";
 
-  const estClass = w.reviewed ? "" : " badge-est";
-  const estTitle = w.reviewed ? "" : ' title="Auto-estimated — not yet verified by the community"';
-
-  const acqBadge = `<div class="badge ba${estClass}"${estTitle}>${ACQ_LABELS[w.acquisition] || w.acquisition}</div>`;
+  const acqBadge = (!w.reviewed || !w.questReward)
+    ? `<div class="badge ba${w.reviewed?'':' badge-est'}"${w.reviewed?'':' title="Auto-estimated — not yet verified by the community"'}>${ACQ_LABELS[w.acquisition] || w.acquisition}</div>`
+    : "";
 
   const keepSellLabel = {keep:"✅ Keep",sell:"❌ Sell",situational:"⚖ Situational"}[w.keepSell] || "";
-  const keepSellBadge = keepSellLabel
-    ? `<div class="badge ba${estClass}" style="margin-left:auto"${estTitle}>${keepSellLabel}</div>`
+  const keepSellBadge = (w.reviewed && keepSellLabel)
+    ? `<div class="badge ba" style="margin-left:auto">${keepSellLabel}</div>`
+    : "";
+
+  const dots = Array.from({length:5},(_,i)=>
+    `<span class="dot ${i<w.acquisitionDifficulty?"f":""}"></span>`
+  ).join("");
+  const obtainSection = w.reviewed
+    ? `<div class="dr" title="${escHtml(diffTooltip(w.acquisition, w.acquisitionDifficulty))}"><span class="dl">Obtain</span><div class="dots">${dots}</div></div>`
+    : `<div class="dr"><span class="dr-placeholder">Obtainability: not yet evaluated</span></div>`;
+
+  const conflictReason = !w.reviewed ? resolveConflict(w) : "";
+  const conflictBadge = conflictReason
+    ? `<div class="badge-conflict" title="${escHtml(conflictReason)}">!</div>`
     : "";
 
   const noteClass = w.reviewed ? "tn" : "tn unreviewed-note";
@@ -713,23 +654,26 @@ function card(w){
 
   return `<div class="card ${s.mastery?"mastered":""} ${s.owned&&!s.mastery?"owned":""}" data-id="${escHtml(w.id)}">
   <div class="stripe ${tclass}"></div>
-  <div class="ch">
-    <div class="img-w">${imgHtml}</div>
-    <div class="ctb">
-      <div class="wname">${escHtml(w.name)}</div>
-      <div class="wmeta">
-        <span class="tt">${escHtml(w.type)}</span>
-        <span class="st">${escHtml(w.subtype)}</span>
-        ${w.masteryReq>0?`<span class="mr">MR${w.masteryReq}</span>`:""}
+  <div class="card-hd-wrap">
+    <div class="ch">
+      <div class="img-w">${imgHtml}</div>
+      <div class="ctb">
+        <div class="wname">${escHtml(w.name)}</div>
+        <div class="wmeta">
+          <span class="tt">${escHtml(w.type)}</span>
+          <span class="st">${escHtml(w.subtype)}</span>
+          ${w.masteryReq>0?`<span class="mr">MR${w.masteryReq}</span>`:""}
+        </div>
+        <div class="tlbl ${tclass}${w.reviewed?"":' badge-est'}">${TIER_LABELS[w.tier]||w.tier}${w.reviewed?"":" ?"}</div>
       </div>
-      <div class="tlbl ${tclass}${w.reviewed?"":' badge-est'}">${TIER_LABELS[w.tier]||w.tier}${w.reviewed?"":" ?"}</div>
     </div>
+    ${conflictBadge}
   </div>
   <div class="cb">
     ${unreviewedBadge}
     ${questBadge}
     <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${acqBadge}${keepSellBadge}</div>
-    <div class="dr"><span class="dl">Obtain</span><div class="dots">${dots}</div></div>
+    ${obtainSection}
     <p class="ad">${escHtml(w.acquisitionDetail)}</p>
     <p class="${noteClass}">${escHtml(noteText)}</p>
     ${comps}
