@@ -265,7 +265,7 @@ a.badge:hover{opacity:.8}
     <span class="banner-icon">⚠</span>
     <div class="banner-text">
       <strong>Curated data update recommended</strong>
-      <p id="banner-msg">Many weapons are missing power-level evaluations. Tier ratings, difficulty scores and keep/sell recommendations require human judgement from experienced players — they cannot be derived from stats alone. To update: open Claude Code, point it at this repo, and follow the instructions in <code>README.md → Updating Curated Data</code>.</p>
+      <p id="banner-msg">Many weapons have auto-estimated data (tier from riven disposition, acquisition from API tags) but haven't been community-verified. Accurate tier ratings, keep/sell recommendations and obtainability details require experienced player review. To update: open Claude Code, point it at this repo, and follow the instructions in <code>README.md → Updating Curated Data</code>.</p>
     </div>
     <button class="banner-close" onclick="document.getElementById('update-banner').classList.add('hidden')" title="Dismiss">✕</button>
   </div>
@@ -600,7 +600,7 @@ function card(w){
   const tclass = tc(w.tier);
 
   const unreviewedBadge = !w.reviewed
-    ? `<div class="badge-unreviewed" title="No community evaluation yet. Tier, difficulty and keep/sell are auto-estimated — treat them as rough guidance only.">⚠ Unreviewed</div>`
+    ? `<div class="badge-unreviewed" title="Tier estimated from riven disposition (lower disposition = more meta). Acquisition type auto-classified from API tags. Not community-verified — treat as rough guidance only.">⚠ Unreviewed</div>`
     : "";
 
   const questBadge = (w.reviewed && w.questReward)
@@ -631,7 +631,7 @@ function card(w){
   const noteClass = w.reviewed ? "tn" : "tn unreviewed-note";
   const noteText  = w.reviewed
     ? w.tierNote
-    : (w.tierNote || "No community evaluation yet. Acquisition type and difficulty are auto-estimated from API data.");
+    : (w.tierNote || "Not community-verified. Tier estimated from riven disposition; acquisition classified from API tags. Treat as rough guidance only.");
 
   const comps = w.components.length
     ? `<div class="cs">
