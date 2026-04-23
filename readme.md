@@ -47,7 +47,7 @@ Stored in `curated.json` (loaded in parallel with the API at runtime). Contains 
 | `questReward` | Quest name if applicable |
 | `reviewed` | `true` = human-verified, `false` = auto-stub |
 
-Weapons **not** in `curated.json` get auto-estimated values derived from their API data (drop location text, tradability, name patterns). These are marked with an **⚠ Unreviewed** badge and should be treated as rough guidance only. Unreviewed weapons also hide the Keep/Sell badge and obtainability dots — they show "Obtainability: not yet evaluated" instead.
+Weapons with `reviewed: false` have auto-estimated values: tier is derived from the weapon's **riven disposition** (DE sets disposition inversely to usage/strength — disposition 1 = meta, disposition 5 = underperformer), and acquisition type is classified from API tags. These are marked with an **⚠ Unreviewed** badge and should be treated as rough guidance only. Unreviewed weapons hide the Keep/Sell badge and obtainability dots — they show "Obtainability: not yet evaluated" instead. See **Updating Curated Data** below for the full methodology.
 
 > **Important:** Tier ratings and keep/sell recommendations reflect the community meta at the time of last update. The Warframe meta shifts with major updates. An "endgame" weapon today may be outclassed after a balance patch.
 
@@ -113,43 +113,112 @@ The app will show an **⚠ update banner** if more than 25% of loaded weapons ar
 
 ## Updating Curated Data (Claude Code workflow)
 
-Curated judgement data lives in **`curated.json`** — a standalone JSON file separate from `index.html`. This means Claude Code sessions only need to read and write the small data file (~8 KB) rather than the entire 61 KB HTML file, dramatically reducing token usage.
+Curated judgement data lives in **`curated.json`** — a standalone JSON file separate from `index.html`. This means Claude Code sessions only need to read and write the small data file rather than the entire HTML file, dramatically reducing token usage.
+
+### How auto-estimated stubs work
+
+When a weapon has no curated entry (or `reviewed: false`), the app shows an **⚠ Unreviewed** badge and hides the Keep/Sell recommendation. The auto-estimated values are generated using this methodology:
+
+**Tier — Riven Disposition Proxy**
+
+DE's riven disposition (1–5) is inversely correlated with weapon usage and meta strength. Disposition 1 = most popular/strongest; disposition 5 = weakest/least used.
+
+| Disposition | Estimated Tier |
+|---|---|
+| 1 | `endgame` |
+| 2 | `good` |
+| 3 | `average` |
+| 4 | `average` |
+| 5 | `fodder` |
+
+Tag-based overrides applied on top:
+- Kuva Lich / Tenet weapons → never below `good` (DE sets these dispositions conservatively)
+- Prime weapons → never `fodder`
+
+**Acquisition — API Tag Classification**
+
+| API tag / field | Acquisition type | Difficulty |
+|---|---|---|
+| Tag: Kuva Lich | `lich` | 4 |
+| Tag: Tenet | `sister` | 4 |
+| Tag: Prime | `relic` | 5 |
+| Tag: Wraith / Vandal / Prisma / Baro | `event` | 5 |
+| Tag: Syndicate faction (Steel Meridian, Red Veil, etc.) | `syndicate` | 4 |
+| Tag: Zariman / Entrati | `syndicate` | 4 |
+| Tag: Stalker / drop text contains "Stalker" | `boss` | 5 |
+| Tag: Duviri / Incarnon | `market` | 3 |
+| Tag: Scaldra | `market` | 2 |
+| Has `marketCost`, no `bpCost` | `market` | 1 |
+| Has `bpCost` | `blueprint` | 2 |
+| Drop text: "Simaris" | `syndicate` | 4 |
+| Railjack drop text | `railjack` | 5 |
+| Not tradable, no drops, no market/bp | `quest` | 4 |
+
+**keepSell estimation:**
+- `lich`, `sister`, `relic`, `boss`, `event`, `quest`, `railjack` → `keep`
+- `fodder` tier → `sell`
+- everything else → `situational`
+
+> **Important:** These are rough estimates, not community verdicts. Always override with `reviewed: true` and accurate values when you have real knowledge of a weapon's performance.
+
+---
 
 ### Full update (after a major patch with new weapons)
 
-Open Claude Code in your repo directory and paste:
+Fetch the API and run the stub generator:
+
+```bash
+# 1. Fetch API data (curl required — API blocks Python's default UA)
+curl -s -A "Mozilla/5.0" "https://api.warframestat.us/weapons/?language=en" -o /tmp/weapons.json
+
+# 2. Run the generator (already in the repo)
+python3 generate_stubs.py
+```
+
+The script applies the full methodology above (disposition proxy + tag classification) and writes only missing entries into `curated.json`.
+
+Alternatively, open Claude Code and paste:
 
 ```
-Fetch all weapons from https://api.warframestat.us/weapons?language=en
-and compare the weapon names against the keys in curated.json.
+A cached API response is at /tmp/weapons.json (fetch it fresh first with:
+  curl -s -A "Mozilla/5.0" "https://api.warframestat.us/weapons/?language=en" -o /tmp/weapons.json
+)
 
-For every weapon not already present in curated.json, add a stub entry with:
+Compare weapon names against keys in curated.json. For every Primary, Secondary,
+or non-modular Melee weapon not already present, add a stub entry with:
   - reviewed: false
-  - tier: "average"
-  - acquisition: auto-derived from the weapon's drop locations
-  - acquisitionDifficulty: auto-derived from acquisition type
-  - keepSell: "situational"
+  - tier: derived from riven disposition (1→endgame, 2→good, 3–4→average, 5→fodder),
+    with Kuva/Tenet weapons upgraded to at least "good" and Prime to at least "average"
+  - acquisition: classified from API tags (Kuva Lich→lich, Tenet→sister, Prime→relic,
+    Wraith/Vandal/Prisma/Baro→event, Stalker→boss, syndicate faction tags→syndicate,
+    Zariman/Entrati→syndicate, Duviri→market, marketCost only→market, bpCost→blueprint)
+  - acquisitionDifficulty: per acquisition type (market=1, blueprint=2, clan/dojo=3,
+    syndicate/lich/sister/quest=4, relic/boss/event/railjack=5)
+  - keepSell: "keep" for hard-to-get types, "sell" for fodder, otherwise "situational"
   - tierNote: ""
 
-Write the updated entries into curated.json only (do NOT touch index.html).
-Print a summary of how many entries were added.
+Apply the same weapon filter as index.html: VALID_TYPES = {Primary, Secondary, Melee},
+exclude excludeFromCodex=true, exclude type="Zaw Component".
+Write only into curated.json. Print a summary.
 ```
 
-### Evaluating specific new weapons
+### Evaluating specific weapons (human review)
 
-After a patch adds weapons you want to properly rate, paste this into Claude Code:
+After a patch you want to properly rate specific weapons, use **[overframe.gg tier lists](https://overframe.gg/tier-list/primary-weapons/)** as your primary reference — also check secondary and melee tabs. Note: overframe.gg is client-side rendered and **cannot be fetched by script** — open it in a browser.
+
+Then paste into Claude Code:
 
 ```
 I want to add curated evaluations for these weapons in curated.json:
 [list weapon names]
 
 For each one, look up community opinions on:
-- Reddit (r/Warframe)
+- Reddit (r/Warframe) — search "[weapon name] steel path"
 - The Warframe wiki
-- Overframe tier lists
+- overframe.gg tier lists (browser required — client-side rendered)
 
-Then write entries with reviewed: true and accurate tier,
-acquisitionDifficulty, keepSell, and tierNote fields.
+Write entries with reviewed: true and accurate tier, acquisitionDifficulty,
+keepSell, and tierNote fields. Do NOT touch index.html.
 ```
 
 ### Fixing stale tier ratings after a balance patch
@@ -157,6 +226,7 @@ acquisitionDifficulty, keepSell, and tierNote fields.
 ```
 The following weapons were changed in the latest Warframe update: [list them].
 Update their entries in curated.json based on current community consensus.
+Reference overframe.gg and r/Warframe for updated opinions.
 Set reviewed: true on any entry you update.
 ```
 
