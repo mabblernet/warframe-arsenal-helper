@@ -193,6 +193,9 @@ body::before{content:'';position:fixed;inset:0;background:
 .btn-g{border-color:var(--gold);color:var(--gold)}
 .btn-g:hover{background:var(--gold-glow)}
 
+/* ── ESTIMATED (unreviewed) ─────────────────────────────── */
+.badge-est{opacity:.5;font-style:italic}
+
 /* ── SCROLLBAR ──────────────────────────────────────────── */
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border-b);border-radius:3px}
@@ -475,6 +478,12 @@ const API_URL = "https://api.warframestat.us/weapons?language=en";
 const CDN_URL = "https://cdn.warframestat.us/img/";
 const VALID_TYPES = new Set(["Primary","Secondary","Melee"]);
 
+function resolveWeaponType(apiW){
+  if(VALID_TYPES.has(apiW.type)) return apiW.type;
+  if(VALID_TYPES.has(apiW.category)) return apiW.category;
+  return null;
+}
+
 async function fetchWeapons(){
   try {
     const res = await fetch(API_URL);
@@ -482,7 +491,7 @@ async function fetchWeapons(){
     const raw = await res.json();
 
     allWeapons = raw
-      .filter(w => VALID_TYPES.has(w.type) && !w.excludeFromCodex)
+      .filter(w => resolveWeaponType(w) !== null && !w.excludeFromCodex)
       .map(w => merge(w))
       .sort((a,b) => a.name.localeCompare(b.name));
 
@@ -518,11 +527,14 @@ function merge(apiW){
     ? CDN_URL + apiW.imageName
     : (apiW.wikiaThumbnail || "");
 
+  const mainType = resolveWeaponType(apiW);
+  const specificType = (VALID_TYPES.has(apiW.type) ? apiW.category : apiW.type) || apiW.weaponType || "Unknown";
+
   return {
     id:                   apiW.uniqueName || apiW.name,
     name:                 apiW.name,
-    type:                 apiW.type,
-    subtype:              apiW.category || apiW.weaponType || "Unknown",
+    type:                 mainType,
+    subtype:              specificType,
     imageSrc:             imgSrc,
     wikiUrl:              apiW.wikiaUrl || `https://wiki.warframe.com/w/${encodeURIComponent(apiW.name.replace(/ /g,"_"))}`,
     masteryReq:           apiW.masteryReq || 0,
@@ -665,11 +677,14 @@ function card(w){
     ? `<div class="badge bq">📜 ${w.questReward}</div>`
     : "";
 
-  const acqBadge = `<div class="badge ba">${ACQ_LABELS[w.acquisition] || w.acquisition}</div>`;
+  const estClass = w.reviewed ? "" : " badge-est";
+  const estTitle = w.reviewed ? "" : ' title="Auto-estimated — not yet verified by the community"';
+
+  const acqBadge = `<div class="badge ba${estClass}"${estTitle}>${ACQ_LABELS[w.acquisition] || w.acquisition}</div>`;
 
   const keepSellLabel = {keep:"✅ Keep",sell:"❌ Sell",situational:"⚖ Situational"}[w.keepSell] || "";
   const keepSellBadge = keepSellLabel
-    ? `<div class="badge ba" style="margin-left:auto">${keepSellLabel}</div>`
+    ? `<div class="badge ba${estClass}" style="margin-left:auto"${estTitle}>${keepSellLabel}</div>`
     : "";
 
   const noteClass = w.reviewed ? "tn" : "tn unreviewed-note";
@@ -707,7 +722,7 @@ function card(w){
         <span class="st">${escHtml(w.subtype)}</span>
         ${w.masteryReq>0?`<span class="mr">MR${w.masteryReq}</span>`:""}
       </div>
-      <div class="tlbl ${tclass}">${TIER_LABELS[w.tier]||w.tier}</div>
+      <div class="tlbl ${tclass}${w.reviewed?"":' badge-est'}">${TIER_LABELS[w.tier]||w.tier}${w.reviewed?"":" ?"}</div>
     </div>
   </div>
   <div class="cb">
@@ -721,10 +736,10 @@ function card(w){
   </div>
   <div class="cf">
     <div class="tr-row">
-      <button class="tbtn ${s.owned?"on":""}" onclick="togOwned(${JSON.stringify(w.id)})">
+      <button class="tbtn ${s.owned?"on":""}">
         <span>${s.owned?"✓":"+"}</span> ${s.owned?"Owned":"Not Owned"}
       </button>
-      <button class="tbtn mb ${s.mastery?"on":""}" onclick="togMastery(${JSON.stringify(w.id)})">
+      <button class="tbtn mb ${s.mastery?"on":""}">
         <span>${s.mastery?"★":"☆"}</span> ${s.mastery?"Mastered":"Mastery"}
       </button>
     </div>
@@ -846,6 +861,16 @@ function bindEvents(){
   });
   document.getElementById("uinput").addEventListener("keydown",e=>{
     if(e.key==="Enter") document.getElementById("usave").click();
+  });
+
+  document.getElementById("grid").addEventListener("click",e=>{
+    const btn=e.target.closest(".tbtn");
+    if(!btn) return;
+    const cardEl=btn.closest(".card");
+    if(!cardEl) return;
+    const id=cardEl.dataset.id;
+    if(btn.classList.contains("mb")) togMastery(id);
+    else togOwned(id);
   });
 }
 
